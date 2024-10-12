@@ -1,18 +1,23 @@
-// import express from "express"
-// import { googleAuth, signup ,signout} from "../Controller/auth.js";
-// import { signin } from "../Controller/auth.js";
-// import { google } from "../Controller/auth.js";
-// const router=express.Router()
-// //create a user
-// router.post("/signup",signup )
-// //signin user
-// router.post("/signin",signin )
+import express from "express";
+import {
+  authMe,
+  getUserById,
+  login,
+  signup,
+  updateUser,
+} from "../controllers/auth.js";
+import authenticateToken from "../middleware/index.js";
 
-// //signout user
-// router.post("/signout",signout )
+const router = express.Router();
 
-// //google auth
-// router.post("/google",googleAuth )
+router.post("/auth/signup", signup);
 
+router.post("/auth/login", login);
 
-// export default router;
+router.get("/auth/me", authenticateToken, authMe);
+
+router.get("/user/:id", authenticateToken, getUserById);
+
+router.put("/user/:id", authenticateToken, updateUser);
+
+export default router;

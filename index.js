@@ -3,9 +3,16 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import chalk from "chalk"; // Import chalk
-import locationRoutes from "./routes/location.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+
+// routes
+import locationRoutes from "./routes/location.js";
+import authRoutes from "./routes/auth.js";
+import vehicleRoutes from "./routes/vehicle.js";
+import driverRoutes from "./routes/driver.js";
+import priceRoutes from "./routes/price.js";
+import bookingRoutes from "./routes/booking.js";
 
 const app = express();
 dotenv.config();
@@ -47,7 +54,14 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+
 app.use("/api/location", locationRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/vehicle", vehicleRoutes);
+app.use("/api/driver", driverRoutes);
+app.use("/api/price", priceRoutes);
+app.use("/api/booking", bookingRoutes);
 
 app.get("/api/getkey", (req, res, next) => res.status(200).json({ key: process.env.RZP_KEY_ID }));
 
