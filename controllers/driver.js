@@ -235,52 +235,83 @@ export const deleteDriver = async (req, res) => {
   }
 };
 
-export const getNearByDrivers = async (src) => {
+export const getNearByDrivers = async (src, vehicleType) => {
   try {
     const drivers = await Driver.aggregate([
       {
-        $geoNear: {
-          near: {
-            type: "Point",
-            coordinates: [src.lng, src.lat],
-          },
-          distanceField: "dist.calculated",
-          maxDistance: 5000,
-          spherical: true,
-          query: {
-            isAvailable: true,
-            currentLocation: {
-              $geoWithin: {
-                $centerSphere: [[src.lng, src.lat], 5 / 6378.1],
-              },
-            },
-          },
+      // Find drivers within 5 km from the given location
+      $geoNear: {
+        near: {
+        type: "Point",
+        coordinates: src, // [longitude, latitude]
         },
+        distanceField: "distance",
+        maxDistance: 5000, // 5 km in meters
+        spherical: true,
+      },
       },
       {
-        $lookup: {
-          from: "vehicles",
-          localField: "vehicleId",
-          foreignField: "_id",
-          as: "vehicleDetails",
-        },
+      // Join with the Vehicle collection to filter by vehicle type
+      $lookup: {
+        from: "vehicles", // The name of the Vehicle collection in the database
+        localField: "vehicleId",
+        foreignField: "_id",
+        as: "vehicle",
+      },
       },
       {
-        $unwind: {
-          path: "$vehicleDetails",
-          preserveNullAndEmptyArrays: true,
-        },
+      // Unwind the vehicle array to treat it as an object
+      $unwind: "$vehicle",
       },
       {
-        $sort: {
-          "dist.calculated": 1,
+      // Join with the User collection to fetch user details
+      $lookup: {
+        from: "users", // The name of the User collection in the database
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+      },
+      {
+      // Unwind the user array to treat it as an object
+      $unwind: "$user",
+      },
+      {
+      // Match the vehicle type to the specified type and check availability
+      $match: {
+        "vehicle.type": vehicleType,
+        isAvailable: true,
+      },
+      },
+      {
+      // Optionally, project the fields you want to return
+      $project: {
+        licenseNumber: 1,
+        isAvailable: 1,
+        currentLocation: 1,
+        "vehicle.type": 1,
+        "vehicle.numberPlate": 1,
+        "vehicle.model": 1,
+        "user._id": 1,
+        "user.name": 1,
+        distance: {
+        $round: [{ $divide: ["$distance", 1000] }, 2], // Distance in km
         },
+      },
+      },
+      {
+      // Sort by distance, closest first
+      $sort: {
+        distance: 1,
+      },
       },
     ]);
 
     return drivers;
   } catch (error) {
-    console.error(error);
-    throw new Error("An error occurred while fetching nearby drivers.");
+    console.error("Error finding nearby drivers:", error);
+    throw error;
   }
 };
+
+

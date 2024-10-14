@@ -1,33 +1,102 @@
 import { validationResult } from "express-validator";
 import { getNearByDrivers } from "./driver.js";
 import Booking from "../models/Booking.js";
+import {  triggerStartNotificationForUser,stopNotification } from "../utils/services.js";
+
 
 export const createBooking = async (req, res) => {
   try {
-    const { src, destn, vehicleType, price } = req.body;
+    const { src, destn, vehicleType, price, srcName, destnName, distance } = req.body;
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       const firstError = errors.array()[0];
       return res.status(400).json({ message: firstError.msg });
     }
-    const drivers = await getNearByDrivers(src);
-    const selectedDrivers = drivers.slice(0, 5);
+
+    const drivers = await getNearByDrivers(src, vehicleType);
+    const selectedDrivers = drivers.slice(0, 10);
+
+    if (selectedDrivers.length === 0) {
+      return res.status(404).json({ message: "No drivers available nearby." });
+    }
+
+    // Create a new booking but do not send a success response yet
+    const booking = new Booking({
+      src:{
+        type: "Point",
+        coordinates: [src.lng, src.lat],
+      },
+      destn:{
+        type: "Point",
+        coordinates: [destn.lng, destn.lat],
+      },
+      distance,
+      price,
+      status: 'pending', // Set status to 'pending' initially
+    });
+    const newBooking = await booking.save();
+
+    let bookingResolved = false;
+
+    // Helper function to resolve the booking once a driver accepts
+    const resolveBooking = async (driverId) => {
+      if (bookingResolved) return;
+      bookingResolved = true;
+
+      // Update the booking with the allocated driver
+      newBooking.driverId = driverId;
+      newBooking.status = 'accepted';
+      await newBooking.save();
+
+      // Stop sending notifications to all other drivers
+      selectedDrivers.forEach(driver => {
+        if (driver._id !== driverId) {
+          stopNotification(driver.userId);
+        }
+      });
+
+      // Respond with success once a driver is allocated
+      res.json({ message: "Booking created and driver allocated successfully", booking: newBooking });
+    };
+
+    // Send notifications to each selected driver
     selectedDrivers.forEach(driver => {
       const notification = {
-        src,
-        destn,
+        srcName,
+        destnName,
         price,
-        kmsAway: driver.kmsAway
+        distance: driver.distance,
+        bookingId: newBooking._id,
       };
-      // Assuming sendNotification is a function that sends a notification to the driver
-      sendNotification(driver.id, notification);
+
+      // Start notification for each driver
+      const userId=driver._id
+      triggerStartNotificationForUser(userId, notification, newBooking._id, resolveBooking);
     });
-    return res.json({ message: "Booking created successfully" });
   } catch (error) {
     console.error(error);
-    return res
-      .status(500)
-      .json({ message: "An error occurred while creating booking" });
+    return res.status(500).json({ message: "An error occurred while creating the booking" });
+  }
+};
+
+export const updateBookingStatusInDB = async (bookingId, driverId) => {
+  try {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Update the booking status to accepted and assign the driver
+    booking.status = 'accepted';
+    booking.driverId = driverId;
+    await booking.save();
+    
+    console.log(`Booking ${bookingId} updated successfully`);
+    return booking;
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    throw error;
   }
 };
 

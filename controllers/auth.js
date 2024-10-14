@@ -66,12 +66,17 @@ export const login = async (req, res) => {
         expiresIn: "1h",
       }
     );
-
+    let driverId=null;
+    if(user.role === "driver"){
+      const driver = await Driver.findOne({userId:user._id});
+      driverId = driver._id;
+    }
     res.status(200).json({
       message: "Login successful",
       token,
       name: user.name,
       role: user.role,
+      driverId: driverId,
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });

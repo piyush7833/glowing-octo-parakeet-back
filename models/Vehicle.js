@@ -39,7 +39,6 @@ const vehicleSchema = new mongoose.Schema(
   }
 );
 
-vehicleSchema.index({ currentLocation: "2dsphere" });
 
 const Vehicle = mongoose.model("Vehicle", vehicleSchema);
 export default Vehicle;

@@ -1,9 +1,8 @@
 import express from "express"
-import { getLocations, getRoute } from "../controllers/location.js";
+import {setCurrLocation } from "../controllers/location.js";
 const router=express.Router()
 
 
-router.get("/get",getLocations )
-router.post("/get-route",getRoute)
+router.put("/set/:id",setCurrLocation)
 
 export default router;

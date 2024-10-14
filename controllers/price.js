@@ -1,68 +1,52 @@
 import { pricePerKm, surgcharge } from "../config/config.js";
-import axios from "axios";
 
 export const getPrice = async (req, res) => {
   try {
-    const { src, destn, vehicleType, distance } = req.body;
-    // console.log(src, destn, vehicleType);
-    // console.log(src.lat, src.lng, destn.lat, destn.lng, vehicleType);
-    if (!src || !destn || !vehicleType || !distance) {
+    const { traffic, distance,isRaining } = req.query;
+
+    let miniPrice = pricePerKm["mini"]*(distance/1000);
+    let truckPrice = pricePerKm["truck"]*(distance/1000);
+    let bigTruckPrice = pricePerKm["big-truck"]*(distance/1000);
+
+    if (!traffic || !distance) {
       return res
         .status(400)
-        .json({ error: "Source, destination, and vehicle type are required" });
+        .json({ error: "Traffic and distance are required" });
     }
-    let price = pricePerKm[vehicleType] * distance;
-    if (distance > 100) {
-      price += price * surgcharge["dist>100"];
+    let totalSurcharge = 0;
+
+    if (distance / 1000 > 100) {
+      totalSurcharge += surgcharge["dist>100"];
+    }
+    if (distance / 1000 > 200) {
+      console.log(distance, "distance");
+      totalSurcharge += surgcharge["dist>200"];
     }
     if (new Date().getHours() >= 20 || new Date().getHours() <= 6) {
-      price += price * surgcharge["night"];
+      totalSurcharge += surgcharge["night"];
     }
-    // const isRainingSrc = await isRaining(src.lat, src.lng);
-    // if (isRainingSrc) {
-    //   price += price * surgcharge["rain"];
-    // }
-    
-    // const trafficData = await getTrafficData(src, destn);
-    // console.log(trafficData,"trafficData")
-    // const evaluatedTraffic = evaluateTrafficCondition(trafficData);
-    // if (evaluatedTraffic === 'High Traffic') {
-    //     price += price * surgcharge["traffic-high"];
-    // }
-    // if (evaluatedTraffic === 'Moderate Traffic') {
-    //     price += price * surgcharge["traffic-moderate"];
-    // }
+    totalSurcharge += surgcharge[traffic];
+    if (isRaining) {
+      totalSurcharge += surgcharge["rain"];
+    }
+
+    miniPrice += miniPrice * totalSurcharge;
+    truckPrice += truckPrice * totalSurcharge;
+    bigTruckPrice += bigTruckPrice * totalSurcharge;
+
     return res
       .status(200)
-      .json({ data: { price }, message: "Price fetched successfully" });
+      .json({ data: { price:{
+        "Mini truck":miniPrice.toFixed(2),
+        "Truck":truckPrice.toFixed(2),
+        "Big truck":bigTruckPrice.toFixed(2)
+      } }, message: "Price fetched successfully" });
   } catch (error) {
-    // console.log(error,"error")
+    console.log(error,"error")
     return res
       .status(500)
       .json({ message: "An error occurred while fetching price." });
   }
 };
 
-async function isRaining(lat, lon) {
-  const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
-  console.log(WEATHER_API_KEY);
-  console.log(process.env.WEATHER_API_KEY);
-  const WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
-  const url = `${WEATHER_BASE_URL}?lat=${lat}&lon=${lon}&appid=c059f784c40df175b4d8623e9553966a&units=metric`; // Metric units for temperature
 
-  try {
-    const response = await axios.get(url);
-    const weatherData = response.data;
-
-    // Check the weather conditions
-    const weatherConditions = weatherData.weather; // Array of weather conditions
-    const isRaining = weatherConditions.some(
-      (condition) => condition.main.toLowerCase() === "rain"
-    );
-
-    return isRaining; // Returns true if it is raining, otherwise false
-  } catch (error) {
-    console.error("Error fetching weather data:", error);
-    throw error; // Propagate the error
-  }
-}

@@ -3,5 +3,5 @@ import { getPrice } from "../controllers/price.js";
 
 const router = express.Router();
 
-router.post("/get", getPrice)
+router.get("/get", getPrice)
 export default router;

@@ -23,7 +23,8 @@ const bookingSchema = new mongoose.Schema(
       type: {
         type: String,
         enum: ["Point"],
-        required: true,
+        default: "Point",
+        required: false,
       },
       coordinates: {
         type: [Number],
@@ -38,6 +39,9 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vehicle",
     },
+    price:{
+        type: Number,
+    }
   },
   {
     timestamps: true,
