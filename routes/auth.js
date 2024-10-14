@@ -6,18 +6,18 @@ import {
   signup,
   updateUser,
 } from "../controllers/auth.js";
-import authenticateToken from "../middleware/index.js";
+import {authenticateToken} from "../middleware/middleware.js";
 
 const router = express.Router();
 
-router.post("/auth/signup", signup);
+router.post("/signup", signup);
 
-router.post("/auth/login", login);
+router.post("/login", login);
 
-router.get("/auth/me", authenticateToken, authMe);
+router.get("/me", authenticateToken, authMe);
 
-router.get("/user/:id", authenticateToken, getUserById);
+router.get("/get/:id", authenticateToken, getUserById);
 
-router.put("/user/:id", authenticateToken, updateUser);
+router.put("/update", authenticateToken, updateUser);
 
 export default router;

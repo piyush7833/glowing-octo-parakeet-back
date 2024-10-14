@@ -1,92 +1,16 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
 import Vehicle from "../models/Vehicle.js";
-
+import { createVehicle, deleteVehicle, getAllVehicles, getVehicleById, updateVehicle } from "../controllers/vehicle.js";
+import { authenticateToken } from "../middleware/middleware.js";
 const router = express.Router();
 
-router.post(
-  "/vehicles",
-  [
-    body("type")
-      .isString()
-      .withMessage("Vehicle type must be a string.")
-      .isIn(["car", "truck", "bus", "motorcycle"])
-      .withMessage(
-        "Vehicle type must be one of car, truck, bus, or motorcycle."
-      ),
-    body("numberPlate")
-      .isString()
-      .trim()
-      .notEmpty()
-      .withMessage("Number plate is required.")
-      .custom(async (value) => {
-        const existingVehicle = await Vehicle.findOne({ numberPlate: value });
-        if (existingVehicle) {
-          throw new Error("Number plate must be unique.");
-        }
-        return true;
-      }),
-    body("model")
-      .isString()
-      .trim()
-      .notEmpty()
-      .withMessage("Model is required."),
-    body("currentLocation.coordinates")
-      .isArray({ min: 2, max: 2 })
-      .withMessage(
-        "Coordinates must be an array of two numbers [longitude, latitude]."
-      )
-      .custom((value) => {
-        const [longitude, latitude] = value;
-        if (
-          longitude < -180 ||
-          longitude > 180 ||
-          latitude < -90 ||
-          latitude > 90
-        ) {
-          throw new Error("Coordinates are out of range.");
-        }
-        return true;
-      }),
-    body("driverId")
-      .optional()
-      .isMongoId()
-      .withMessage("Driver ID must be a valid MongoDB ObjectID."),
-    body("imageUrl").optional().isURL().withMessage("Image URL must be valid."),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const firstError = errors.array()[0];
-      return res.status(400).json({ message: firstError.msg });
-    }
+router.post("/create",  authenticateToken, createVehicle )
 
-    const { type, numberPlate, model, currentLocation, driverId, imageUrl } =
-      req.body;
-
-    try {
-      const newVehicle = new Vehicle({
-        type,
-        numberPlate,
-        model,
-        currentLocation: {
-          type: "Point",
-          coordinates: currentLocation.coordinates,
-        },
-        driverId,
-        imageUrl,
-      });
-
-      await newVehicle.save();
-      return res.status(201).json(newVehicle);
-    } catch (error) {
-      console.error(error);
-      return res
-        .status(500)
-        .json({ message: "An error occurred while creating the vehicle." });
-    }
-  }
-);
+router.get("/get",authenticateToken,getAllVehicles)
+router.get("/get/:id",authenticateToken,getVehicleById)
+router.delete("/delete/:id",authenticateToken,deleteVehicle)
+router.put("/update/:id",authenticateToken,updateVehicle)
 
 router.get(
   "/nearby-vehicles",

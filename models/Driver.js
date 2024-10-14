@@ -18,12 +18,24 @@ const driverSchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number],
-      default: [9999, 9999],
+      default: [90, 90],
     },
   },
   vehicleId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vehicle",
+    unique: false,
+  },
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    unique: true,
   },
 });
 

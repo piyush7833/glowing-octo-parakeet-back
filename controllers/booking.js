@@ -47,7 +47,6 @@ export const getBooking = async (req, res) => {
 }
 
 export const updateBooking = async (req, res) => {
-    const { id } = req.params;
     const updates = Object.keys(req.body);
     const allowedUpdates = ['status', 'driverId', 'duration', 'distance', 'price','src','destn'];
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
@@ -58,7 +57,7 @@ export const updateBooking = async (req, res) => {
     try {
         const {id} = req.params;
         const booking = await Booking.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-        return res.json({ message: "Booking updated successfully" });
+        return res.json({data:{booking}, message: "Booking updated successfully" });
     } catch (error) {
         console.error(error);
         return res
@@ -71,7 +70,7 @@ export const getParticularBooking = async (req, res) => {
     try {
         const { id } = req.params;
         const booking = await Booking.findById(id);
-        return res.json({ message: "Particular booking fetched successfully" });
+        return res.json({data:{booking}, message: "Particular booking fetched successfully" });
     } catch (error) {
         console.error(error);
         return res

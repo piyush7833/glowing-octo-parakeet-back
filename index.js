@@ -29,7 +29,7 @@ const connect = () => {
         });
 };
 
-const allowedOrigins = ['http://localhost:3000', 'https://iiitusnapshots.netlify.app', 'https://iiitu-snapshots.vercel.app'];
+const allowedOrigins = ['http://localhost:3000'];
 
 const getColorStatus = (status) => {
     if (status >= 500) return chalk.red(status);

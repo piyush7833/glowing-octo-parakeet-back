@@ -5,7 +5,7 @@ const vehicleSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["mini-truck", "truck", "big-truck"],
+      enum: ["mini truck", "truck", "big truck"],
     },
     numberPlate: {
       type: String,
@@ -20,11 +20,13 @@ const vehicleSchema = new mongoose.Schema(
     },
     driverId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Driver",
+      unique: false,
     },
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
     },
     imageUrl: {
       type: String,

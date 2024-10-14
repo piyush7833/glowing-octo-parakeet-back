@@ -94,7 +94,7 @@ export const getRoute = async (req, res) => {
     );
 
     // Log the full response
-    // console.log('Response from OpenRouteService:', JSON.stringify(response.data, null, 2));
+    console.log('Response from OpenRouteService:', JSON.stringify(response.data, null, 2));
 
     const route = response.data.routes[0].geometry;
     const distance = response.data.routes[0].summary.distance; // Convert to km
