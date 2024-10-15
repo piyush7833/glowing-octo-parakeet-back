@@ -8,7 +8,7 @@ const driverSchema = new mongoose.Schema({
   },
   isAvailable: {
     type: Boolean,
-    default: false,
+    default: true,
   },
   currentLocation: {
     type: {

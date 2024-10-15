@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
   },
   "type": "module",
   "author": "Piyush Singh",
@@ -19,12 +20,14 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-validator": "^7.2.0",
+    "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "kafka-node": "^5.0.0",
     "leaflet-routing-machine": "^3.2.12",
     "mongodb": "^6.9.0",
     "mongoose": "^8.7.1",
     "morgan": "^1.10.0",
+    "razorpay": "^2.9.4",
     "socket.io": "^4.8.0"
   },
   "devDependencies": {

@@ -2,13 +2,13 @@ import { pricePerKm, surgcharge } from "../config/config.js";
 
 export const getPrice = async (req, res) => {
   try {
-    const { traffic, distance,isRaining } = req.query;
+    let { traffic, distance,isRaining } = req.query;
 
     let miniPrice = pricePerKm["mini"]*(distance/1000);
     let truckPrice = pricePerKm["truck"]*(distance/1000);
     let bigTruckPrice = pricePerKm["big-truck"]*(distance/1000);
 
-    if (!traffic || !distance) {
+    if (!distance) {
       return res
         .status(400)
         .json({ error: "Traffic and distance are required" });
@@ -25,7 +25,7 @@ export const getPrice = async (req, res) => {
     if (new Date().getHours() >= 20 || new Date().getHours() <= 6) {
       totalSurcharge += surgcharge["night"];
     }
-    totalSurcharge += surgcharge[traffic];
+    totalSurcharge += surgcharge[traffic?traffic:"traffic-low"];
     if (isRaining) {
       totalSurcharge += surgcharge["rain"];
     }
@@ -33,13 +33,13 @@ export const getPrice = async (req, res) => {
     miniPrice += miniPrice * totalSurcharge;
     truckPrice += truckPrice * totalSurcharge;
     bigTruckPrice += bigTruckPrice * totalSurcharge;
-
+    console.log("object",miniPrice,truckPrice,bigTruckPrice)
     return res
       .status(200)
       .json({ data: { price:{
-        "Mini truck":miniPrice.toFixed(2),
-        "Truck":truckPrice.toFixed(2),
-        "Big truck":bigTruckPrice.toFixed(2)
+        "mini truck":miniPrice.toFixed(2),
+        "truck":truckPrice.toFixed(2),
+        "big truck":bigTruckPrice.toFixed(2)
       } }, message: "Price fetched successfully" });
   } catch (error) {
     console.log(error,"error")

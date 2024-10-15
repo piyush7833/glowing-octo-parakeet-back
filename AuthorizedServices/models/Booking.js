@@ -6,7 +6,7 @@ const bookingSchema = new mongoose.Schema(
         type: Number,
     },
     duration: {
-        type: Number, //in seconds
+        type: String, 
     },
     src: {
       type: {
@@ -31,6 +31,16 @@ const bookingSchema = new mongoose.Schema(
         required: true,
       },
     },
+    srcName: {
+      type: String,
+    },
+    destnName: {
+      type: String,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     driverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -41,7 +51,16 @@ const bookingSchema = new mongoose.Schema(
     },
     price:{
         type: Number,
-    }
+    },
+    status: {
+      type: String,
+      enum: ["pending", "accepted","collected","completed", "cancelled"],
+      default: "pending",
+    },
+    paymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Payment",
+    },
   },
   {
     timestamps: true,

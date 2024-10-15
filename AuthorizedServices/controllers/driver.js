@@ -2,6 +2,8 @@ import { validationResult } from "express-validator";
 import Driver from "../models/Driver.js";
 import User from "../models/User.js";
 import Vehicle from "../models/Vehicle.js";
+// import Booking from "../models/Booking.js";
+// import { activeBookings } from "./booking.js";
 
 export const createDriver = async (req, res) => {
   const errors = validationResult(req);
@@ -117,6 +119,8 @@ export const getParticularDriver = async (req, res) => {
       email: driver.userId.email,
       phone: driver.userId.phone,
       licenseNumber: driver.licenseNumber,
+      isAvailable: driver.isAvailable,
+      currentLocation: driver.currentLocation,
       role: driver.userId.role,
       vehicle: driver.vehicleId
         ? {
@@ -137,6 +141,64 @@ export const getParticularDriver = async (req, res) => {
     });
   }
 };
+
+
+// export const handleSocketEvents = (io, socket) => {
+//   socket.on("registerDriver", (userId) => {
+//     if (userId) {
+//       socket.join(userId);
+//       console.log(`Driver registered: ${userId}`);
+//     }
+//   });
+
+//   socket.on("acceptBooking", async ({ bookingId, driverId }) => {
+//     try {
+//       const driver = await Driver.findByIdAndUpdate(driverId,{isAvailable:false}).populate("userId", "name phone");
+//       console.log(driver);
+//       const booking = await Booking.findByIdAndUpdate(
+//         bookingId,
+//         { driverId, status: "accepted" },
+//         { new: true }
+//       );
+//       io.emit("bookingAccepted", { booking, driverName: driver.userId.name });
+  
+//       // Check if the booking exists in activeBookings before modifying it
+//       if (activeBookings[bookingId]) {
+//         activeBookings[bookingId].driverAssigned = true;
+//         socket
+//           .to(activeBookings[bookingId].notifiedDrivers)
+//           .emit("bookingCancelled", { bookingId });
+//       } else {
+//         console.error(`Booking ID ${bookingId} is not active or has been removed`);
+//       }
+//     } catch (error) {
+//       console.error("Error in acceptBooking:", error);
+//     }
+//   });
+  
+
+//   socket.on("rejectBooking", ({ bookingId, driverId }) => {
+//     if (
+//       activeBookings[bookingId] &&
+//       Array.isArray(activeBookings[bookingId].notifiedDrivers)
+//     ) {
+//       const index = activeBookings[bookingId].notifiedDrivers.indexOf(driverId);
+//       if (index !== -1) {
+//         activeBookings[bookingId].notifiedDrivers.splice(index, 1);
+//       }
+//     } else {
+//       console.error(
+//         `Booking ID ${bookingId} does not exist or does not have notifiedDrivers`
+//       );
+//     }
+//   });
+  
+
+//   socket.on("disconnect", () => {
+//     console.log(`Driver disconnected: ${socket.id}`);
+//   });
+// };
+
 
 export const updateDriver = async (req, res) => {
   const errors = validationResult(req);
@@ -246,7 +308,7 @@ export const getNearByDrivers = async (src, vehicleType) => {
         coordinates: src, // [longitude, latitude]
         },
         distanceField: "distance",
-        maxDistance: 5000, // 5 km in meters
+        maxDistance: 10000, // 10 km in meters
         spherical: true,
       },
       },
@@ -313,5 +375,35 @@ export const getNearByDrivers = async (src, vehicleType) => {
     throw error;
   }
 };
+
+
+export const updateDriverLocation = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { location } = req.body;
+    
+    if (!location || !location.lat || !location.lng) {
+      return res.status(400).json({ message: "Invalid location data." });
+    }
+
+    const updatedDriver = await Driver.findByIdAndUpdate(
+      id,
+      { 
+        $set: { "currentLocation.coordinates": [location.lat, location.lng] }
+      },
+      { new: true }
+    );
+
+    if (!updatedDriver) {
+      return res.status(404).json({ message: "Driver not found." });
+    }
+
+    return res.status(200).json({ message: "Driver location updated successfully." });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "An error occurred while updating the driver location." });
+  }
+};
+
 
 
