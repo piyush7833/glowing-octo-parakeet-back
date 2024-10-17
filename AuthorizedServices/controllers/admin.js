@@ -27,7 +27,21 @@ export const getDriverAnalytics = async (req, res) => {
                 _id: "$_id",
                 totalEarnings: { $sum: "$bookings.price" },
                 totalTrips: { $sum: 1 },
-                totalDuration: { $sum: "$bookings.duration" },
+                totalDuration: { 
+                $sum: {
+                    $let: {
+                    vars: {
+                        parts: { $split: ["$bookings.duration", " "] }
+                    },
+                    in: {
+                        $add: [
+                        { $multiply: [{ $toInt: { $arrayElemAt: ["$$parts", 0] } }, 3600] },
+                        { $multiply: [{ $toInt: { $arrayElemAt: ["$$parts", 2] } }, 60] }
+                        ]
+                    }
+                    }
+                }
+                },
                 totalDistance: { $sum: "$bookings.distance" },
                 isAvailable: { $first: "$isAvailable" },
                 runningTrip: {
@@ -49,7 +63,20 @@ export const getDriverAnalytics = async (req, res) => {
                 _id: 1,
                 totalEarnings: 1,
                 totalTrips: 1,
-                totalDuration: 1,
+                totalDuration: {
+                $let: {
+                    vars: {
+                    hours: { $floor: { $divide: ["$totalDuration", 3600] } },
+                    minutes: { $floor: { $mod: [{ $divide: ["$totalDuration", 60] }, 60] } }
+                    },
+                    in: {
+                    $concat: [
+                        { $toString: "$$hours" }, " hr ",
+                        { $toString: "$$minutes" }, " mins"
+                    ]
+                    }
+                }
+                },
                 totalDistance: 1,
                 isAvailable: 1,
                 runningTrip: 1
@@ -94,7 +121,21 @@ export const getVehicleAnalytics = async (req, res) => {
                 _id: "$_id",
                 totalEarnings: { $sum: "$bookings.price" },
                 totalTrips: { $sum: 1 },
-                totalDuration: { $sum: "$bookings.duration" },
+                totalDuration: { 
+                $sum: {
+                    $let: {
+                    vars: {
+                        parts: { $split: ["$bookings.duration", " "] }
+                    },
+                    in: {
+                        $add: [
+                        { $multiply: [{ $toInt: { $arrayElemAt: ["$$parts", 0] } }, 3600] },
+                        { $multiply: [{ $toInt: { $arrayElemAt: ["$$parts", 2] } }, 60] }
+                        ]
+                    }
+                    }
+                }
+                },
                 totalDistance: { $sum: "$bookings.distance" }
             }
             },
@@ -103,7 +144,20 @@ export const getVehicleAnalytics = async (req, res) => {
                 _id: 1,
                 totalEarnings: 1,
                 totalTrips: 1,
-                totalDuration: 1,
+                totalDuration: {
+                $let: {
+                    vars: {
+                    hours: { $floor: { $divide: ["$totalDuration", 3600] } },
+                    minutes: { $floor: { $mod: [{ $divide: ["$totalDuration", 60] }, 60] } }
+                    },
+                    in: {
+                    $concat: [
+                        { $toString: "$$hours" }, " hr ",
+                        { $toString: "$$minutes" }, " mins"
+                    ]
+                    }
+                }
+                },
                 totalDistance: 1,
             }
             }

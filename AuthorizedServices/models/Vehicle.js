@@ -22,11 +22,13 @@ const vehicleSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Driver",
       unique: false,
+      index: true,
     },
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     imageUrl: {
       type: String,

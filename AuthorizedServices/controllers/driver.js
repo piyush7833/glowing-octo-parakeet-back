@@ -2,6 +2,8 @@ import { validationResult } from "express-validator";
 import Driver from "../models/Driver.js";
 import User from "../models/User.js";
 import Vehicle from "../models/Vehicle.js";
+import { delAsync, getAsync, setAsync } from "../config/redis.js";
+
 // import Booking from "../models/Booking.js";
 // import { activeBookings } from "./booking.js";
 
@@ -13,7 +15,7 @@ export const createDriver = async (req, res) => {
   }
   try {
     const { name, username, email, password, phone, licenseNumber } = req.body;
-    
+    const adminCacheKey = `admin-drivers:${req.user.id}`;
     const userData = {
       name,
       username,
@@ -32,6 +34,7 @@ export const createDriver = async (req, res) => {
     const driver = new Driver(driverData);
     const newDriver = await driver.save();
     await user.save();
+    await delAsync(adminCacheKey);
     res.status(201).json({
       data: {
         driver: {
@@ -62,6 +65,11 @@ export const createDriver = async (req, res) => {
 
 export const getAllDrivers = async (req, res) => {
   try {
+    const adminCacheKey = `admin-drivers:${req.user.id}`; 
+    const cachedDrivers = await getAsync(adminCacheKey);
+    if (cachedDrivers) {
+      return res.status(200).json({ data: { drivers: JSON.parse(cachedDrivers) } });
+    }
     const drivers = await Driver.find({ adminId: req.user.id })
       .populate("userId", "name username email phone role")
       .populate("vehicleId", "model licensePlate");
@@ -81,6 +89,7 @@ export const getAllDrivers = async (req, res) => {
           }
         : null,
     }));
+    await setAsync(adminCacheKey, JSON.stringify(drivers), 'EX', 6000);
     res
       .status(200)
       .json({
@@ -101,6 +110,11 @@ export const getAllDrivers = async (req, res) => {
 
 export const getParticularDriver = async (req, res) => {
   try {
+    const cacheKey = `driver:${req.params.id}`; 
+    const cachedDriver = await getAsync(cacheKey);
+    if (cachedDriver) {
+      return res.status(200).json({ data: { driver: JSON.parse(cachedDriver) } });
+    }
     const driver = await Driver.findById(req.params.id)
       .populate("userId", "name username email phone role")
       .populate("vehicleId", "model licensePlate");
@@ -129,6 +143,7 @@ export const getParticularDriver = async (req, res) => {
           }
         : null,
     };
+    await setAsync(cacheKey, JSON.stringify(driverDetails), 'EX', 6000);
     res.status(200).json({ data: { driver: driverDetails } });
   } catch (error) {
     console.error(error);
@@ -143,64 +158,8 @@ export const getParticularDriver = async (req, res) => {
 };
 
 
-// export const handleSocketEvents = (io, socket) => {
-//   socket.on("registerDriver", (userId) => {
-//     if (userId) {
-//       socket.join(userId);
-//       console.log(`Driver registered: ${userId}`);
-//     }
-//   });
-
-//   socket.on("acceptBooking", async ({ bookingId, driverId }) => {
-//     try {
-//       const driver = await Driver.findByIdAndUpdate(driverId,{isAvailable:false}).populate("userId", "name phone");
-//       console.log(driver);
-//       const booking = await Booking.findByIdAndUpdate(
-//         bookingId,
-//         { driverId, status: "accepted" },
-//         { new: true }
-//       );
-//       io.emit("bookingAccepted", { booking, driverName: driver.userId.name });
-  
-//       // Check if the booking exists in activeBookings before modifying it
-//       if (activeBookings[bookingId]) {
-//         activeBookings[bookingId].driverAssigned = true;
-//         socket
-//           .to(activeBookings[bookingId].notifiedDrivers)
-//           .emit("bookingCancelled", { bookingId });
-//       } else {
-//         console.error(`Booking ID ${bookingId} is not active or has been removed`);
-//       }
-//     } catch (error) {
-//       console.error("Error in acceptBooking:", error);
-//     }
-//   });
-  
-
-//   socket.on("rejectBooking", ({ bookingId, driverId }) => {
-//     if (
-//       activeBookings[bookingId] &&
-//       Array.isArray(activeBookings[bookingId].notifiedDrivers)
-//     ) {
-//       const index = activeBookings[bookingId].notifiedDrivers.indexOf(driverId);
-//       if (index !== -1) {
-//         activeBookings[bookingId].notifiedDrivers.splice(index, 1);
-//       }
-//     } else {
-//       console.error(
-//         `Booking ID ${bookingId} does not exist or does not have notifiedDrivers`
-//       );
-//     }
-//   });
-  
-
-//   socket.on("disconnect", () => {
-//     console.log(`Driver disconnected: ${socket.id}`);
-//   });
-// };
-
-
 export const updateDriver = async (req, res) => {
+  
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const firstError = errors.array()[0];
@@ -212,13 +171,15 @@ export const updateDriver = async (req, res) => {
   ];
   const isValidOperation = updates.every((update) =>
     allowedUpdates.includes(update)
-  );
-  if (!isValidOperation) {
-    return res.status(400).send({ message: "Invalid updates!" });
-  }
+);
+if (!isValidOperation) {
+  return res.status(400).send({ message: "Invalid updates!" });
+}
 
-  try {
+try {
+    const cacheKey = `driver:${req.params.id}`; 
     const driver = await Driver.findById(req.params.id);
+    const adminCacheKey = `admin-drivers:${driver.adminId}`;
     if (!driver) {
       return res.status(404).json({ message: "Driver not found." });
     }
@@ -253,7 +214,8 @@ export const updateDriver = async (req, res) => {
           }
         : null,
     };
-
+    await setAsync(cacheKey, JSON.stringify(driverDetails), 'EX', 6000);
+    await delAsync(adminCacheKey);
     res.status(200).json({
       data: { driver: driverDetails },
       message: "Driver updated successfully.",
@@ -272,7 +234,9 @@ export const updateDriver = async (req, res) => {
 
 export const deleteDriver = async (req, res) => {
   try {
+    const cacheKey = `driver:${req.params.id}`; 
     const driver = await Driver.findById(req.params.id);
+    const adminCacheKey = `admin-drivers:${driver.adminId}`;
     await Vehicle.findOneAndUpdate({ driverId: req.params.id }, { driverId: null });
     if (!driver) {
       return res.status(404).json({ message: "Driver not found." });
@@ -284,6 +248,8 @@ export const deleteDriver = async (req, res) => {
     }
     await User.deleteOne({ _id: driver.userId });
     await Driver.deleteOne({ _id: req.params.id });
+    await delAsync(cacheKey);
+    await delAsync(adminCacheKey);
     res.status(200).json({ message: "Driver deleted successfully." });
   } catch (error) {
     console.error(error);
@@ -294,6 +260,37 @@ export const deleteDriver = async (req, res) => {
         },
       ],
     });
+  }
+};
+
+export const updateDriverLocation = async (req, res) => {
+  try {
+    const cacheKey = `driver:${req.params.id}`; 
+    const id = req.params.id;
+    const { location } = req.body;
+    
+    if (!location || !location.lat || !location.lng) {
+      return res.status(400).json({ message: "Invalid location data." });
+    }
+
+    const updatedDriver = await Driver.findByIdAndUpdate(
+      id,
+      { 
+        $set: { "currentLocation.coordinates": [location.lat, location.lng] }
+      },
+      { new: true }
+    );
+    const adminCacheKey = `admin-drivers:${updatedDriver.adminId}`;
+    await delAsync(cacheKey);
+    await delAsync(adminCacheKey);
+    if (!updatedDriver) {
+      return res.status(404).json({ message: "Driver not found." });
+    }
+
+    return res.status(200).json({ message: "Driver location updated successfully." });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "An error occurred while updating the driver location." });
   }
 };
 
@@ -377,33 +374,7 @@ export const getNearByDrivers = async (src, vehicleType) => {
 };
 
 
-export const updateDriverLocation = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { location } = req.body;
-    
-    if (!location || !location.lat || !location.lng) {
-      return res.status(400).json({ message: "Invalid location data." });
-    }
 
-    const updatedDriver = await Driver.findByIdAndUpdate(
-      id,
-      { 
-        $set: { "currentLocation.coordinates": [location.lat, location.lng] }
-      },
-      { new: true }
-    );
-
-    if (!updatedDriver) {
-      return res.status(404).json({ message: "Driver not found." });
-    }
-
-    return res.status(200).json({ message: "Driver location updated successfully." });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "An error occurred while updating the driver location." });
-  }
-};
 
 
 

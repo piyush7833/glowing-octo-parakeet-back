@@ -2,10 +2,10 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import Driver from "../models/Driver.js";
+import { getAsync, setAsync, delAsync } from "../config/redis.js";
 
 export const signup = async (req, res) => {
-  const { name, email, password, role, licenseNumber,phone,secretKey } =
-    req.body;
+  const { name, email, password, role, licenseNumber, phone, secretKey } = req.body;
 
   try {
     const userExists = await User.findOne({ email });
@@ -22,19 +22,10 @@ export const signup = async (req, res) => {
       await driver.save();
       driverId = driver._id;
     }
-    // console.log(secretKey,"secretKey")
-    const user = new User({ name, email, password, role, driverId,phone,secretKey });
+
+    const user = new User({ name, email, password, role, driverId, phone, secretKey });
     await user.save();
-    console.log(process.env.JWT_SECRET,"process.env.JWT_SECRET")
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1h",
-      }
-    );
-    res.cookie("token", token, { httpOnly: true ,sameSite:"none",secure:true});
-    
+
     res.status(201).json({
       message: "User created successfully",
       token,
@@ -63,12 +54,12 @@ export const login = async (req, res) => {
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       {
-        expiresIn: "1h",
+        expiresIn: "24h",
       }
     );
-    let driverId=null;
-    if(user.role === "driver"){
-      const driver = await Driver.findOne({userId:user._id});
+    let driverId = null;
+    if (user.role === "driver") {
+      const driver = await Driver.findOne({ userId: user._id });
       driverId = driver._id;
     }
     res.status(200).json({
@@ -85,6 +76,11 @@ export const login = async (req, res) => {
 
 export const authMe = async (req, res) => {
   try {
+    const cachedUser = await getAsync(`user:${req.user.id}`);
+    if (cachedUser) {
+      return res.status(200).json({ data: { user: JSON.parse(cachedUser) }, message: "User found successfully" });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -98,7 +94,9 @@ export const authMe = async (req, res) => {
       role: user.role,
     };
 
-    res.status(200).json({data:{user:response},message:"User found successfully"});
+    await setAsync(`user:${user._id}`, JSON.stringify(response), 'EX', 3600); // Cache for 1 hour
+
+    res.status(200).json({ data: { user: response }, message: "User found successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -108,6 +106,11 @@ export const getUserById = async (req, res) => {
   const { id } = req.params;
 
   try {
+    const cachedUser = await getAsync(`user:${id}`);
+    if (cachedUser) {
+      return res.status(200).json(JSON.parse(cachedUser));
+    }
+
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -120,6 +123,7 @@ export const getUserById = async (req, res) => {
       role: user.role,
     };
 
+    await setAsync(`user:${user._id}`, JSON.stringify(response), 'EX', 3600); // Cache for 1 hour
 
     res.status(200).json(response);
   } catch (error) {
@@ -129,8 +133,7 @@ export const getUserById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { name, email, password, role, licenseNumber, preferredVehicleType } =
-    req.body;
+  const { name, email, password, role, licenseNumber, preferredVehicleType } = req.body;
 
   try {
     const user = await User.findById(id);
@@ -149,11 +152,9 @@ export const updateUser = async (req, res) => {
     }
 
     if (user.role === "driver") {
-      const driver = await Driver.findOne({userId:id});
+      const driver = await Driver.findOne({ userId: id });
       if (driver) {
         driver.licenseNumber = licenseNumber || driver.licenseNumber;
-        driver.preferredVehicleType =
-          preferredVehicleType || driver.preferredVehicleType;
         await driver.save();
       }
     }
@@ -172,7 +173,9 @@ export const updateUser = async (req, res) => {
       response.driverInfo = user.driverId;
     }
 
-    res.status(200).json({data:{user:response},message:"User updated successfully"});
+    await setAsync(`user:${user._id}`, JSON.stringify(response), 'EX', 3600); // Update cache
+
+    res.status(200).json({ data: { user: response }, message: "User updated successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

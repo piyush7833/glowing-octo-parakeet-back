@@ -16,3 +16,4 @@ export const pricePerKm={
     "truck":15,
     "big-truck":20
 }
+

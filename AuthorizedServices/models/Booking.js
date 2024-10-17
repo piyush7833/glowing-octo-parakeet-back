@@ -8,6 +8,12 @@ const bookingSchema = new mongoose.Schema(
     duration: {
         type: String, 
     },
+    startTime: {
+      type: Date,
+    },
+    endTime: {
+      type: Date,
+    },
     src: {
       type: {
         type: String,
@@ -40,14 +46,17 @@ const bookingSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      index: true,
     },
     driverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      index: true,
     },
     vehicleId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vehicle",
+      index: true,
     },
     price:{
         type: Number,

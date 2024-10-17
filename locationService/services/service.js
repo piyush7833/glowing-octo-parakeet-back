@@ -6,7 +6,7 @@ import axios from 'axios';
 async function handleLocationUpdate(driverId, location) {
   try {
     const prevLocation = JSON.parse(await redisClient.get(`driverLocation:${driverId}`));
-
+    console.log(prevLocation)
     if (!prevLocation || prevLocation.lat !== location.lat || prevLocation.lng !== location.lng) {
       // const driver = await Driver.findOne({ _id: driverId, isAvailable: true });
       // const driver = await Driver.findById(driverId);

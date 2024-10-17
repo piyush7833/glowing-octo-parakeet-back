@@ -20,7 +20,7 @@ app.get("/api/price/get", (req, res) => {
     let truckPrice = pricePerKm["truck"] * (distance / 1000);
     let bigTruckPrice = pricePerKm["big-truck"] * (distance / 1000);
 
-    if (!distance) {
+    if (!distance || distance==0) {
       return res
         .status(400)
         .json({ error: "Traffic and distance are required" });

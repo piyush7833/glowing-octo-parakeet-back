@@ -1,8 +1,7 @@
 import Booking from "../models/Booking.js";
-// import { io } from "../index.js";
 import Driver from "../models/Driver.js";
 import { io } from "../index.js";
-export var activeBookings = {};
+import { delAsync } from "../config/redis.js";
 
 // export const createBooking = async (req, res) => {
 //   try {
@@ -65,8 +64,6 @@ export var activeBookings = {};
 export const getBooking = async (req, res) => {
     try {
         const driver=await Driver.findOne({userId:req.user.id});
-        console.log(req.user.id)
-        console.log(driver)
         let bookings;
         if(driver){
              bookings = await Booking.find({driverId: driver._id});
@@ -100,10 +97,15 @@ export const updateBooking = async (req, res) => {
         if(Object.keys(req.body).includes('status') ){
             if(req.body.status==="completed"){
                 io.emit("bookingCompleted", { booking});
-                await Driver.findByIdAndUpdate(booking.driverId, { isAvailable: true });
+                const driver=await Driver.findByIdAndUpdate(booking.driverId, { isAvailable: true,endTime: Date.now() });
+                const driverAdminCacheKey=`admin-drivers:${driver.adminId}`;
+                delAsync(driverAdminCacheKey);
+
             }
             else if(req.body.status==="cancelled"){
-                    await Driver.findByIdAndUpdate(booking.driverId, { isAvailable: true });
+                const driver=await Driver.findByIdAndUpdate(booking.driverId, { isAvailable: true });
+                const driverAdminCacheKey=`admin-drivers:${driver.adminId}`;
+                delAsync(driverAdminCacheKey);
                 io.emit("bookingCancelled", { booking });
             }
             else if(req.body.status==="collected"){
@@ -122,7 +124,13 @@ export const updateBooking = async (req, res) => {
 export const getParticularBooking = async (req, res) => {
     try {
         const { id } = req.params;
-        const booking = await Booking.findById(id);
+        const booking = await Booking.findById(id)
+            .populate("vehicleId", "model type")
+            .populate("userId", "name");
+
+        if (!booking) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
         return res.json({data:{booking}, message: "Particular booking fetched successfully" });
     } catch (error) {
         console.error(error);
